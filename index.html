@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TOEIC 900 Flashcards — Words / Idioms / Collocations</title>
+  <style>
+    :root{--bg:#0f1115;--card:#171a21;--ink:#e5e7eb;--muted:#9aa3b2;--accent:#7c9cff;--ok:#49d17d;--warn:#ffcc66;--bad:#ff7a7a;--line:#262b36;}
+    html,body{height:100%} body{margin:0;font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,"Hiragino Sans","Noto Sans JP","Yu Gothic","Meiryo",sans-serif;color:var(--ink);background:#0b0d11;}
+    header{position:sticky;top:0;backdrop-filter: blur(6px);background:rgba(15,17,21,0.7);border-bottom:1px solid var(--line);z-index:10;}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px;} h1{font-size:20px;margin:0;font-weight:700}
+    .subtitle{color:var(--muted);font-size:12px}
+    .grid{display:grid;gap:16px;grid-template-columns:300px 1fr}@media(max-width:860px){.grid{grid-template-columns:1fr}}
+    .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    button{border:1px solid var(--line);background:#13161d;color:var(--ink);padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+    button:hover{border-color:#3a4253}.btn-primary{background:var(--accent);border-color:transparent;color:#101218}.btn-ok{background:var(--ok);color:#0b120d;border-color:transparent}.btn-warn{background:var(--warn);color:#111}.btn-bad{background:var(--bad);color:#111}.pill{font-size:12px;padding:6px 10px;border-radius:999px}
+    input,textarea,select{width:100%;padding:10px 12px;border-radius:10px;background:#0f1218;color:var(--ink);border:1px solid var(--line)}
+    label{display:block;font-size:12px;color:var(--muted);margin:8px 0 6px}
+    .card{background:#131722;border:1px solid var(--line);border-radius:16px;padding:18px;min-height:240px;display:flex;flex-direction:column;gap:12px}
+    .head{display:flex;align-items:flex-end;gap:10px}.hw{font-size:28px;font-weight:800}.meta{color:var(--muted);font-size:12px}
+    .def{font-size:16px}.etymology,.derivatives,.colloc{color:var(--muted);font-size:13px;line-height:1.5}
+    .example{background:#10131a;border:1px dashed #2a3140;padding:12px;border-radius:12px}.example p{margin:6px 0}.example .en{font-weight:700}.example .ja{color:#cdd6e6}
+    .footer{color:var(--muted);font-size:12px;text-align:center;padding:16px}
+    .deck-item{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#10141b;cursor:pointer}.deck-item.active{outline:2px solid var(--accent)}
+    .kbd{border:1px solid var(--line);border-bottom-width:3px;border-radius:6px;padding:2px 6px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>TOEIC 900 Flashcards</h1>
+    <div class="subtitle">英単語・熟語・コロケーション・語源・派生語｜例文＆和訳つき｜ローカル保存・インポート/エクスポート対応</div>
+  </div>
+</header>
+<div id="snackbar" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+background:#1f2937;color:#e5e7eb;border:1px solid #374151;border-radius:10px;
+padding:10px 14px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9999;font-size:14px;"></div>
+
+
+<main class="wrap" style="padding-top:16px;">
+  <div class="grid">
+    <aside class="panel">
+      <h2>学習コントロール</h2>
+      <div class="row">
+        <button id="startBtn" class="btn-primary">学習開始</button>
+        <button id="revealBtn">答えを表示 <span class="kbd">Space</span></button>
+        <button id="ttsBtn">発音(TTS) <span class="kbd">S</span></button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn-bad pill" data-rate="again">Again 0d <span class="kbd">1</span></button>
+        <button class="btn-warn pill" data-rate="hard">Hard +1d <span class="kbd">2</span></button>
+        <button class="btn-ok pill" data-rate="good">Good +3d <span class="kbd">3</span></button>
+        <button class="btn-primary pill" data-rate="easy">Easy +7d <span class="kbd">4</span></button>
+      </div>
+      <div style="margin-top:8px;color:#9aa3b2;font-size:12px">Due: <span id="dueCount">0</span> ／ 学習済: <span id="doneCount">0</span> ／ 残り: <span id="leftCount">0</span></div>
+
+      <h2 style="margin-top:16px">デッキ / 絞り込み</h2>
+      <div class="deck-list" id="deckList"></div>
+      <label>種類で絞り込み</label>
+      <select id="typeFilter">
+        <option value="all">すべて</option>
+        <option value="word">単語</option>
+        <option value="idiom">熟語</option>
+        <option value="collocation">コロケーション</option>
+      </select>
+
+      <h2 style="margin-top:16px">データ管理</h2>
+      <div class="row">
+        <input type="file" id="fileInput" accept=".json" />
+        <button id="importBtn">インポート(JSON)</button>
+        <button id="exportBtn">エクスポート(JSON)</button>
+      </div>
+
+      <h2 style="margin-top:16px">カード追加 / 編集</h2>
+      <form id="cardForm">
+        <label>見出し語 (英語)</label><input type="text" id="f_headword" required/>
+        <label>品詞</label><input type="text" id="f_pos" placeholder="n./v./adj.など"/>
+        <label>種類</label><select id="f_type"><option value="word">単語</option><option value="idiom">熟語</option><option value="collocation">コロケーション</option></select>
+        <label>定義（英語）</label><textarea id="f_def" rows="2"></textarea>
+        <label>和訳（短義）</label><input type="text" id="f_gloss"/>
+        <label>語源（英語/日本語可）</label><textarea id="f_etym" rows="2"></textarea>
+        <label>派生語（カンマ区切り）</label><input type="text" id="f_deriv" placeholder="derivative1, derivative2"/>
+        <label>コロケーション（カンマ区切り）</label><input type="text" id="f_colloc" placeholder="strong demand, file a lawsuit"/>
+        <label>例文（英語）</label><textarea id="f_ex_en" rows="2"></textarea>
+        <label>例文（和訳）</label><textarea id="f_ex_ja" rows="2"></textarea>
+        <label>タグ（任意・カンマ区切り）</label><input type="text" id="f_tags" placeholder="finance, negotiation"/>
+        <label>デッキ名（任意）</label><input type="text" id="f_deck" placeholder="Core / Finance / Meetings"/>
+        <div style="margin-top:8px" class="row"><button type="submit" class="btn-primary">保存</button><button type="button" id="resetFormBtn">フォームリセット</button></div>
+      </form>
+    </aside>
+
+    <section class="panel">
+      <h2>学習カード</h2>
+      <div id="cardView" class="card">
+        <div class="head"><div class="hw" id="hw">—</div><div class="meta" id="meta">—</div></div>
+        <div class="def" id="def">ここに定義が表示されます</div>
+        <div class="muted" id="gloss"></div>
+        <div class="colloc" id="colloc"></div>
+        <div class="etymology" id="etym"></div>
+        <div class="derivatives" id="derivatives"></div>
+        <div class="example"><p class="en" id="ex_en"></p><p class="ja" id="ex_ja"></p></div>
+        <div class="row"><button id="prevBtn">← 前のカード <span class="kbd">A</span></button><button id="nextBtn">次のカード → <span class="kbd">D</span></button></div>
+      </div>
+      <div class="footer">Space:答え表示 / S:TTS / 1~4:評価 / A/D:移動</div>
+    </section>
+  </div>
+</main>
+
+<script>
+const now = ()=>Date.now(); const day = 86400000;
+const defaultCards=[{id:"hedge_v",headword:"hedge",pos:"v.",type:"word",definition:"to reduce risk by compensating possible losses",gloss:"（損失に備えて）リスクをヘッジする",etymology:"From Old English 'hecg' (a fence); figurative sense in finance.",derivatives:["hedging","hedged","hedgeable","hedger"],collocations:["hedge against inflation","currency hedge","hedge position"],examples:[{en:"The firm hedged its euro exposure ahead of the policy meeting.",ja:"その企業は政策会合に先立ち、ユーロのエクスポージャーをヘッジした。"}],deck:"Core 900",srs:{box:1,next:0,reps:0,lapses:0}},{id:"incur_v",headword:"incur",pos:"v.",type:"word",definition:"to become subject to something unwelcome or unpleasant",gloss:"（損失・罰など）を被る／負う",etymology:"Latin 'incurrere' (to run into).",derivatives:["incurred","incurring","incurrence"],collocations:["incur a loss","incur a fee","incur liability"],examples:[{en:"We may incur additional costs if the shipment is delayed.",ja:"出荷が遅れた場合、追加費用を被る可能性がある。"}],deck:"Core 900",srs:{box:1,next:0,reps:0,lapses:0}}];
+const STORAGE_KEY="toeic900_cards_v1";
+function loadAll(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaultCards;const arr=JSON.parse(raw);return Array.isArray(arr)&&arr.length?arr:defaultCards;}catch(e){return defaultCards}}
+function saveAll(cs){localStorage.setItem(STORAGE_KEY,JSON.stringify(cs))}
+function schedule(card,r){const m={again:0,hard:1,good:3,easy:7};const add=m[r];if(r==="again"){card.srs.box=1;card.srs.lapses+=1}else{card.srs.box=Math.min((card.srs.box||1)+1,5)}card.srs.reps=(card.srs.reps||0)+1;card.srs.next=now()+add*day}
+function due(cs){const t=now();return cs.filter(c=>(c.srs?.next||0)<=t)}
+let CARDS=loadAll(),filtered=CARDS.slice(),index=0,currentDeck="All",currentType="all";
+const deckListEl=document.getElementById("deckList"),typeFilterEl=document.getElementById("typeFilter");
+const hwEl=document.getElementById("hw"),metaEl=document.getElementById("meta"),defEl=document.getElementById("def"),glossEl=document.getElementById("gloss"),etymEl=document.getElementById("etym"),derivEl=document.getElementById("derivatives"),collocEl=document.getElementById("colloc"),exEnEl=document.getElementById("ex_en"),exJaEl=document.getElementById("ex_ja");
+const dueCountEl=document.getElementById("dueCount"),doneCountEl=document.getElementById("doneCount"),leftCountEl=document.getElementById("leftCount");
+function uniqueDecks(cs){const s=new Set(cs.map(c=>c.deck||"No Deck"));return ["All",...Array.from(s)]}
+function renderDecks(){deckListEl.innerHTML="";uniqueDecks(CARDS).forEach(d=>{const b=document.createElement("button");b.className="deck-item"+(currentDeck===d?" active":"");b.textContent=d;b.onclick=()=>{currentDeck=d;applyFilters()};deckListEl.appendChild(b)})}
+function applyFilters(){filtered=CARDS.filter(c=>{const deckOK=(currentDeck==="All")||((c.deck||"No Deck")===currentDeck);const typeOK=(currentType==="all")||(c.type===currentType);return deckOK&&typeOK});index=0;updateCounters();renderCard();renderDecks()}
+typeFilterEl.onchange=(e)=>{currentType=e.target.value;applyFilters()}
+function updateCounters(){const d=due(CARDS).length;dueCountEl.textContent=d;doneCountEl.textContent=CARDS.reduce((a,c)=>a+(c.srs?.reps||0),0);leftCountEl.textContent=filtered.length}
+function renderCard(){if(!filtered.length){hwEl.textContent="（カードがありません）";metaEl.textContent="";defEl.textContent="JSONをインポートまたはカード追加をしてください。";glossEl.textContent="";etymEl.textContent="";derivEl.textContent="";collocEl.textContent="";return}const c=filtered[index];hwEl.textContent=c.headword||"";metaEl.textContent=`${c.pos||""} • ${c.type||""} • Deck: ${c.deck||"No Deck"} • Box ${c.srs?.box||1}`;defEl.textContent=c.definition||"";glossEl.textContent=c.gloss?("和訳: "+c.gloss):"";etymEl.textContent=c.etymology?("語源: "+c.etymology):"";derivEl.textContent=(c.derivatives&&c.derivatives.length)?("派生語: "+c.derivatives.join(", ")):"";collocEl.textContent=(c.collocations&&c.collocations.length)?("コロケーション: "+c.collocations.join("; ")):"";const ex=(c.examples&&c.examples[0])||{en:"",ja:""};document.getElementById("ex_en").textContent=ex.en||"";document.getElementById("ex_ja").textContent=ex.ja||"";updateCounters()}
+document.getElementById("prevBtn").onclick=()=>{if(filtered.length){index=(index-1+filtered.length)%filtered.length;renderCard();showToast("前へ")}};
+document.getElementById("nextBtn").onclick=()=>{if(filtered.length){index=(index+1)%filtered.length;renderCard();showToast("次へ")}};
+document.getElementById("revealBtn").onclick=()=>{const cv=document.getElementById("cardView");cv.style.outline="2px solid var(--accent)";setTimeout(()=>{cv.style.outline="none"},260)};function showToast(m){const el=document.getElementById("snackbar");el.textContent=m;el.style.opacity=1;clearTimeout(window.__snackTimer);window.__snackTimer=setTimeout(()=>{el.style.opacity=0},1800);}
+document.getElementById("ttsBtn").onclick=()=>{if(!('speechSynthesis'in window)){alert('このブラウザはTTSに対応していません。');return}if(!filtered.length)return;const c=filtered[index];const u=new SpeechSynthesisUtterance((c.headword||"")+". "+(c.definition||""));const v=speechSynthesis.getVoices().find(v=>v.lang.startsWith("en"));if(v)u.voice=v;u.rate=0.95;speechSynthesis.cancel();speechSynthesis.speak(u)};
+
+document.getElementById('startBtn').onclick=()=>{applyFilters();const allDue=due(CARDS);const ids=new Set(allDue.map(c=>c.id));const pool=filtered.filter(c=>ids.has(c.id));if(pool.length){filtered=pool.slice();index=0;showToast(`Due セッション開始：${pool.length} 枚`)}else{filtered=filtered.slice().sort(()=>Math.random()-0.5);index=0;showToast(`Due なし：シャッフル学習（${filtered.length} 枚）`)};renderCard();const cv=document.getElementById('cardView');cv.style.outline='2px solid var(--accent)';setTimeout(()=>{cv.style.outline='none'},300)};
+document.querySelectorAll('[data-rate]').forEach(btn=>{btn.onclick=()=>{if(!filtered.length)return;const r=btn.getAttribute('data-rate');const c=filtered[index];schedule(c,r);saveAll(CARDS);index=(index+1)%filtered.length;renderCard();showToast('評価: '+r)}});
+window.addEventListener('keydown',(e)=>{const k=e.key.toLowerCase();if(k===' '){e.preventDefault();document.getElementById("revealBtn").click()}if(k==='s'){document.getElementById("ttsBtn").click()}if(k==='a'){document.getElementById("prevBtn").click()}if(k==='d'){document.getElementById("nextBtn").click()}if(k==='1'){document.querySelector('[data-rate="again"]').click()}if(k==='2'){document.querySelector('[data-rate="hard"]').click()}if(k==='3'){document.querySelector('[data-rate="good"]').click()}if(k==='4'){document.querySelector('[data-rate="easy"]').click()}});
+document.getElementById("exportBtn").onclick=()=>{const dataStr="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(CARDS,null,2));const a=document.createElement("a");a.href=dataStr;a.download="toeic900_cards.json";a.click();showToast('エクスポートしました')} ;
+document.getElementById("importBtn").onclick=()=>{const f=document.getElementById("fileInput").files[0];if(!f){alert("JSONファイルを選択してください");return}const reader=new FileReader();reader.onload=(e)=>{try{const arr=JSON.parse(e.target.result);if(!Array.isArray(arr))throw new Error("JSONは配列形式である必要があります");const byId=Object.fromEntries(CARDS.map(c=>[c.id,c]));arr.forEach(o=>{if(!o.id){o.id=(o.headword||"card")+"_"+Math.random().toString(36).slice(2,7)}if(!o.srs)o.srs={box:1,next:0,reps:0,lapses:0};byId[o.id]={...byId[o.id],...o}});CARDS=Object.values(byId);saveAll(CARDS);applyFilters();alert("インポート完了: "+arr.length+" 件") }catch(err){alert("インポート失敗: "+err.message)}};reader.readAsText(f)};
+document.getElementById("resetFormBtn").onclick=()=>document.getElementById("cardForm").reset();
+(function init(){if(!localStorage.getItem(STORAGE_KEY)){saveAll(defaultCards)}else{CARDS=loadAll()}renderDecks();applyFilters();renderCard()})();
+</script>
+</body>
+</html>
